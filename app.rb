@@ -18,7 +18,7 @@ configure do
   set :reply_regex, Regexp.new(ENV["REPLY_REGEX"], "i")
   # Mute if this message is received
   set :mute_regex, Regexp.new(ENV["MUTE_REGEX"], "i")
-  
+
   # Set up redis
   case settings.environment
   when :development
@@ -110,7 +110,7 @@ post "/markov" do
     puts "[ERROR] #{e}"
     response = ""
   end
-  
+
   status 200
   body response
 end
@@ -289,7 +289,7 @@ def import_history(channel_id, latest = nil, user_id = nil, oldest = nil)
     messages = messages.find_all{ |m| m["user"] == user_id } unless user_id.nil?
 
     if messages.size > 0
-      puts "Importing #{messages.size} messages from #{DateTime.strptime(messages.first["ts"],"%s").strftime("%c")}" if messages.size > 0  
+      puts "Importing #{messages.size} messages from #{DateTime.strptime(messages.first["ts"],"%s").strftime("%c")}" if messages.size > 0
       $redis.pipelined do
         messages.each do |m|
           store_markov(m["text"])
@@ -301,6 +301,33 @@ def import_history(channel_id, latest = nil, user_id = nil, oldest = nil)
     if response["has_more"] && !response["messages"].last["ts"].nil?
       latest = response["messages"].last["ts"]
       import_history(channel_id, latest, user_id, oldest)
+    end
+  else
+    puts "Error fetching channel history: #{response["error"]}" unless response["error"].nil?
+  end
+end
+
+def import_search(query, page = 1)
+  uri = "https://slack.com/api/search.messages?token=#{ENV["API_TOKEN"]}&query=#{query}&count=1000"
+  uri += "&page=#{page}" unless page.nil?
+  request = HTTParty.get(uri)
+  response = JSON.parse(request.body)
+  if response["ok"]
+    # Find all messages that are plain messages (no subtype), are not hidden, are not from a bot (integrations, etc.) and are not cfbot commands
+    messages = response["messages"]["matches"].find_all{ |m| m["subtype"].nil? && m["hidden"] != true && m["bot_id"].nil? && !m["user"].nil? && !m["text"].match(settings.reply_regex) && !m["text"].match(settings.ignore_regex) }
+
+    if messages.size > 0
+      puts "Importing #{messages.size} messages from #{DateTime.strptime(messages.first["ts"],"%s").strftime("%c")}" if messages.size > 0
+      $redis.pipelined do
+        messages.each do |m|
+          store_markov(m["text"])
+        end
+      end
+    end
+
+    # If there are more messages in the API call, make another call, starting with the timestamp of the last message
+    if page < response["messages"]["pagination"]["page_count"]
+      import_history(query, page + 1)
     end
   else
     puts "Error fetching channel history: #{response["error"]}" unless response["error"].nil?
