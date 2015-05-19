@@ -333,3 +333,7 @@ def import_search(query, page = 1)
     puts "Error fetching channel history: #{response["error"]}" unless response["error"].nil?
   end
 end
+
+def clear_redis
+  $redis.flushdb
+end

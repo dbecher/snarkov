@@ -32,6 +32,10 @@ namespace :import do
   end
 end
 
+task :clear do
+  clear_redis
+end
+
 task :tweet do
   tweet(build_markov)
 end
