@@ -81,16 +81,18 @@ post "/markov" do
 
       # Store the text if someone is not manually invoking a reply
       # and if the selected user is defined and matches
-      if !ENV["SLACK_USER"].nil?
-        if !params[:text].match(settings.reply_regex) && (ENV["SLACK_USER"] == params[:user_name] || ENV["SLACK_USER"] == params[:user_id])
-          $redis.pipelined do
-            store_markov(params[:text])
+      unless ENV["DONT_UPDATE"]
+        if !ENV["SLACK_USER"].nil?
+          if !params[:text].match(settings.reply_regex) && (ENV["SLACK_USER"] == params[:user_name] || ENV["SLACK_USER"] == params[:user_id])
+            $redis.pipelined do
+              store_markov(params[:text])
+            end
           end
-        end
-      else
-        if !params[:text].match(settings.reply_regex)
-          $redis.pipelined do
-            store_markov(params[:text])
+        else
+          if !params[:text].match(settings.reply_regex)
+            $redis.pipelined do
+              store_markov(params[:text])
+            end
           end
         end
       end
