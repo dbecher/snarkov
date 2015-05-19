@@ -26,9 +26,11 @@ namespace :import do
   task :search do
     if ENV["QUERY"].nil?
       puts "You need to specify a query, e.g. rake import:search QUERY=\"from:david\""
+    else
+      start_time = Time.now
+      import_search(ENV["QUERY"])
+      puts "Completed in #{Time.now - start_time} seconds"
     end
-    import_search(ENV["QUERY"])
-    puts "Completed in #{Time.now - start_time} seconds"
   end
 end
 
