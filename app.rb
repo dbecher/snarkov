@@ -327,7 +327,7 @@ def import_search(query, page = 1)
 
     # If there are more messages in the API call, make another call, starting with the timestamp of the last message
     if page < response["messages"]["pagination"]["page_count"]
-      import_history(query, page + 1)
+      import_search(query, page + 1)
     end
   else
     puts "Error fetching channel history: #{response["error"]}" unless response["error"].nil?
